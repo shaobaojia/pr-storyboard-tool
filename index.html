@@ -109,6 +109,18 @@
                 log('→ ' + (result || '(无返回值)'));
             });
         });
+        // === 命令通道：NAS → CEP → PR ===
+        // 面板每隔 2 秒检查命令文件，发现命令自动执行
+        var cmdPolling = 0;
+        setInterval(function() {
+            cmdPolling++;
+            cs.evalScript('$.hermes.checkCmd()', function(r) {
+                if (r && r !== 'NOP') {
+                    log('[cmd] ' + r, 'ok');
+                }
+            });
+        }, 2000);
+        log('命令通道已启动 (检查 C:\\temp\\_hermes_cmd.txt)');
     })();
     </script>
 </body>
