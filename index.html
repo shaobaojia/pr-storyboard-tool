@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>拉片截图工具</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, "Segoe UI", sans-serif;
+            background: #1e1e1e;
+            color: #ccc;
+            padding: 16px;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        .title {
+            font-size: 15px;
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 16px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #333;
+        }
+        .config-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+        .config-row label {
+            font-size: 13px;
+            white-space: nowrap;
+            color: #aaa;
+        }
+        .config-row input {
+            width: 48px;
+            padding: 6px 8px;
+            background: #2d2d2d;
+            border: 1px solid #444;
+            border-radius: 4px;
+            color: #fff;
+            font-size: 13px;
+            text-align: center;
+        }
+        .config-row input:focus {
+            outline: none;
+            border-color: #6a8cff;
+        }
+        .hint {
+            font-size: 11px;
+            color: #666;
+            margin-top: -8px;
+            margin-bottom: 14px;
+        }
+        button {
+            display: block;
+            width: 100%;
+            padding: 10px 14px;
+            margin-bottom: 8px;
+            border: none;
+            border-radius: 5px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.15s, opacity 0.15s;
+        }
+        button:active { opacity: 0.85; }
+        .btn-primary {
+            background: #3a5fcd;
+            color: #fff;
+        }
+        .btn-primary:hover { background: #4a6fdd; }
+        .btn-primary:disabled { background: #2a3a5a; color: #666; cursor: not-allowed; }
+        .btn-secondary {
+            background: #3a7a3a;
+            color: #fff;
+        }
+        .btn-secondary:hover { background: #4a8a4a; }
+        .btn-secondary:disabled { background: #2a4a2a; color: #666; cursor: not-allowed; }
+        .divider {
+            height: 1px;
+            background: #333;
+            margin: 14px 0;
+        }
+        .status {
+            font-size: 12px;
+            color: #888;
+            min-height: 20px;
+            margin-bottom: 4px;
+        }
+        .status.success { color: #5a5; }
+        .status.error { color: #c55; }
+        .log {
+            margin-top: 8px;
+            background: #161616;
+            border: 1px solid #2a2a2a;
+            border-radius: 4px;
+            padding: 10px;
+            font-family: "SF Mono", "Consolas", monospace;
+            font-size: 11px;
+            color: #999;
+            max-height: 160px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        .log::-webkit-scrollbar { width: 6px; }
+        .log::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+    </style>
+</head>
+<body>
+    <div class="title">拉片截图工具</div>
+
+    <div class="config-row">
+        <label for="mpc">每镜头标记数</label>
+        <input type="number" id="mpc" value="3" min="1" max="20">
+    </div>
+    <div class="hint">在 I/O 入出点范围内自动均匀打标</div>
+
+    <button class="btn-primary" id="btnPlace" onclick="runAutoPlace()">
+        1. 自动打标记
+    </button>
+
+    <button class="btn-primary" id="btnExport" onclick="runBatchExport()">
+        2. 导出截图
+    </button>
+
+    <div class="divider"></div>
+
+    <div class="status" id="status">就绪</div>
+    <div class="log" id="log"></div>
+
+    <script>
+        var cs = new CSInterface();
+        var extPath = cs.getSystemPath(SystemPath.EXTENSION);
+        // Normalize backslashes for ExtendScript
+        var scriptsDir = extPath.replace(/\\/g, '/') + '/scripts/';
+
+        function $(id) { return document.getElementById(id); }
+
+        function log(msg, isError) {
+            var el = $('log');
+            el.textContent += msg + '\n';
+            el.scrollTop = el.scrollHeight;
+            if (isError) {
+                setStatus(msg, 'error');
+            }
+        }
+
+        function setStatus(msg, cls) {
+            var el = $('status');
+            el.textContent = msg;
+            el.className = 'status ' + (cls || '');
+        }
+
+        function disableButtons(disabled) {
+            $('btnPlace').disabled = disabled;
+            $('btnExport').disabled = disabled;
+        }
+
+        // ── 监听 ExtendScript 输出 ──
+        cs.addEventListener('console.log', function(e) {
+            if (e.data && e.data.message) {
+                log(e.data.message);
+            }
+        });
+
+        // ── 1. 自动打标记 ──
+        function runAutoPlace() {
+            var markersPerClip = parseInt($('mpc').value, 10) || 3;
+            if (markersPerClip < 1 || markersPerClip > 20) {
+                setStatus('每镜头标记数应为 1~20', 'error');
+                return;
+            }
+
+            disableButtons(true);
+            setStatus('正在自动打标记...');
+            $('log').textContent = '';
+
+            // 把 markersPerClip 传入脚本
+            var script = '$.global.markersPerClip = ' + markersPerClip + '; $.evalFile("' + scriptsDir + 'auto_place_markers.jsx");';
+
+            cs.evalScript(script, function(result) {
+                disableButtons(false);
+                if (result === undefined || result === null || result === '') {
+                    // Script ran - alerts/prompts are handled natively by ExtendScript
+                    setStatus('自动打标记脚本已执行', 'success');
+                } else if (result.indexOf && result.indexOf('Error') !== -1) {
+                    setStatus('执行出错', 'error');
+                    log(result, true);
+                } else {
+                    log(result);
+                    setStatus('完成', 'success');
+                }
+            });
+        }
+
+        // ── 2. 导出截图 ──
+        function runBatchExport() {
+            disableButtons(true);
+            setStatus('正在导出截图...');
+            $('log').textContent = '';
+
+            var script = '$.evalFile("' + scriptsDir + 'batch_export_markers.jsx");';
+
+            cs.evalScript(script, function(result) {
+                disableButtons(false);
+                if (result === undefined || result === null) {
+                    setStatus('导出脚本已执行', 'success');
+                } else {
+                    log(result);
+                    setStatus('完成', 'success');
+                }
+            });
+        }
+    </script>
+</body>
+</html>
