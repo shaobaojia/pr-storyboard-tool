@@ -28,7 +28,7 @@
     </style>
 </head>
 <body>
-    <div class="title">拉片截图工具</div>
+    <div class="title">拉片截图工具 <a href="javascript:history.go(0)" style="float:right;font-size:11px;color:#666;text-decoration:none;font-weight:normal;">↻ 刷新</a></div>
     <div class="row">
         <label for="mpc">每镜头标记数</label>
         <input type="number" id="mpc" value="3" min="1" max="20">
@@ -38,99 +38,77 @@
     <button class="btn2" id="btnExport">2. 导出截图</button>
     <div class="divider"></div>
     <div class="status" id="status">就绪</div>
-    <div class="log" id="log">日志将写入桌面 pr_log.txt\n</div>
+    <div class="log" id="log">日志写入桌面 pr_log.txt / pr_export_log.txt<br>就绪。</div>
 
     <script>
     (function() {
         var logEl = document.getElementById('log');
         var statusEl = document.getElementById('status');
-        function log(msg, cls) { logEl.textContent += msg + '\n'; logEl.scrollTop = logEl.scrollHeight; if (cls) { statusEl.textContent = msg; statusEl.className = 'status ' + cls; } }
-        function setStatus(msg, cls) { statusEl.textContent = msg; statusEl.className = 'status ' + (cls || ''); }
-        function disableButtons(v) { document.getElementById('btnPlace').disabled = v; document.getElementById('btnExport').disabled = v; }
-        var cs = new CSInterface();
-        log('CEP 就绪');
 
+        function log(msg, cls) {
+            logEl.textContent += msg + '\n';
+            logEl.scrollTop = logEl.scrollHeight;
+            if (cls) { statusEl.textContent = msg; statusEl.className = 'status ' + cls; }
+        }
+        function setStatus(msg, cls) {
+            statusEl.textContent = msg;
+            statusEl.className = 'status ' + (cls || '');
+        }
+        function disableButtons(v) {
+            document.getElementById('btnPlace').disabled = v;
+            document.getElementById('btnExport').disabled = v;
+        }
+
+        var cs = new CSInterface();
+        log('CEP 就绪，检测 host.jsx ...');
+
+        // 诊断: 检查 $.hermes 是否被 ScriptPath 加载
+        cs.evalScript('typeof $.hermes', function(r) {
+            if (r === 'object') {
+                log('✅ host.jsx 已加载', 'ok');
+            } else {
+                log('❌ host.jsx 未加载！typeof $.hermes = ' + r, 'err');
+                log('请重启 Premiere Pro（manifest.xml 改了必须重启）', 'err');
+            }
+        });
+
+        // === 自动打标记 ===
         document.getElementById('btnPlace').addEventListener('click', function() {
             var mpc = parseInt(document.getElementById('mpc').value, 10) || 3;
-            if (mpc < 1 || mpc > 20) return;
-            disableButtons(true); setStatus('运行中...'); logEl.textContent = '';
+            if (mpc < 1 || mpc > 20) { setStatus('1~20', 'err'); return; }
+            disableButtons(true);
+            setStatus('打标中...');
+            logEl.textContent = '';
 
-            var jsx = '$.global.mpc = ' + mpc + ';'
-                + '(function(){'
-                + 'var LOG="C:/Users/54718/Desktop/pr_log.txt";'
-                + 'var F=new File(LOG);F.open("w");'
-                + 'function A(s){F.write(s+"\\n");$.writeln(s);}'
-                + 'A("=== 自动打标记 ===");'
-                + 'var seq=app.project.activeSequence;'
-                + 'if(!seq){A("FAIL: 无序列");F.close();alert("FAIL: 无序列");return;}'
-                + 'A("序列: "+seq.name);'
-                + 'var mpc=$.global.mpc||3;A("标记/镜头: "+mpc);'
-
-                + 'var ip=null,op=null;'
-                + 'try{ip=seq.getInPointAsTime();A("getInPointAsTime: ticks="+ip.ticks+" sec="+ip.seconds);}'
-                + 'catch(e){A("getInPointAsTime ERR: "+e);F.close();alert("ERR: getInPointAsTime");return;}'
-                + 'try{op=seq.getOutPointAsTime();A("getOutPointAsTime: ticks="+op.ticks+" sec="+op.seconds);}'
-                + 'catch(e){A("getOutPointAsTime ERR: "+e);F.close();alert("ERR: getOutPointAsTime");return;}'
-                + 'if(!ip||!op){A("FAIL: ip/op null");F.close();alert("FAIL: IO null");return;}'
-                + 'if(Number(ip.ticks)>=Number(op.ticks)){A("FAIL: IO invalid");F.close();alert("FAIL: IO范围无效");return;}'
-                + 'A("I/O OK: "+ip.seconds.toFixed(1)+"s ~ "+op.seconds.toFixed(1)+"s");'
-
-                + 'var clips=[];var vt=seq.videoTracks;A("轨数: "+vt.numTracks);'
-                + 'for(var t=0;t<vt.numTracks;t++){var tk=vt[t];var cc=0;'
-                + 'for(var c=0;c<tk.clips.numItems;c++){var cl=tk.clips[c];'
-                + 'if(Number(cl.end.ticks)<=Number(ip.ticks)||Number(cl.start.ticks)>=Number(op.ticks))continue;'
-                + 'var es=Math.max(Number(cl.start.ticks),Number(ip.ticks)),ee=Math.min(Number(cl.end.ticks),Number(op.ticks));'
-                + 'if(ee-es<500)continue;clips.push({s:es,e:ee,d:ee-es});cc++;}'
-                + 'A("轨"+t+": "+cc+" clips");}'
-                + 'A("总clip: "+clips.length);'
-                + 'if(!clips.length){A("FAIL: 无clip");F.close();alert("FAIL: 无clip");return;}'
-
-                + 'clips.sort(function(a,b){return a.s-b.s;});'
-                + 'var mk=seq.markers,tot=0;'
-                + 'for(var i=0;i<clips.length;i++){var cl=clips[i];'
-                + 'for(var j=1;j<=mpc;j++){var mt=(cl.s+Math.round(cl.d*j/(mpc+1)))/254016000000;'
-                + 'var m=mk.createMarker(mt);if(m){m.name="C"+(i+1)+"-"+j;tot++;}}}'
-                + 'A("=== 完成: "+tot+" markers ===");'
-                + 'F.close();'
-                + 'alert("完成!\\nclip:"+clips.length+"\\n标记:"+tot+"\\n\\n日志: 桌面 pr_log.txt");'
-                + '})();';
-
-            cs.evalScript(jsx, function(result) { disableButtons(false); setStatus('完成', 'ok'); });
+            // ✅ 短调用 — host.jsx 已在面板启动时预加载
+            cs.evalScript('$.hermes.autoPlace(' + mpc + ')', function(result) {
+                disableButtons(false);
+                if (result && String(result).indexOf('FAIL:') === 0) {
+                    setStatus(result, 'err');
+                } else {
+                    setStatus('完成', 'ok');
+                }
+                log('→ ' + (result || '(无返回值)'));
+            });
         });
 
+        // === 导出截图 ===
         document.getElementById('btnExport').addEventListener('click', function() {
-            disableButtons(true); setStatus('导出中...'); logEl.textContent = '';
+            disableButtons(true);
+            setStatus('导出中...');
+            logEl.textContent = '';
 
-            var jsx = '(function(){'
-                + 'var LOG="C:/Users/54718/Desktop/pr_log.txt";'
-                + 'var F=new File(LOG);F.open("w");'
-                + 'function A(s){F.write(s+"\\n");$.writeln(s);}'
-                + 'A("=== 导出截图 ===");'
-                + 'var seq=app.project.activeSequence;if(!seq){A("FAIL:no seq");F.close();alert("no seq");return;}'
-                + 'A("序列:"+seq.name);'
-                + 'var ip=null,op=null;try{ip=seq.getInPointAsTime();}catch(e){}try{op=seq.getOutPointAsTime();}catch(e){}'
-                + 'if(ip&&op)A("I/O:"+ip.seconds.toFixed(1)+"s~"+op.seconds.toFixed(1)+"s");else A("无I/O");'
-                + 'var mk=seq.markers;if(!mk||!mk.numMarkers){A("FAIL:无标记");F.close();alert("无标记");return;}'
-                + 'A("标记数:"+mk.numMarkers);'
-                + 'var dir=Folder.selectDialog("输出目录");if(!dir){A("取消");F.close();return;}'
-                + 'A("输出:"+dir.fsName);'
-                + 'app.enableQE();var qs=qe.project.getActiveSequence();if(!qs){A("FAIL:QE");F.close();alert("QE fail");return;}'
-                + 'function S(n){return n.replace(/[\\\\/:*?"<>|]/g,"_");}'
-                + 'var sn=S(seq.name),ex=0,sk=0,fa=0,idx=0,m=mk.getFirstMarker();'
-                + 'while(m){idx++;'
-                + 'if(ip&&op&&(Number(m.start.ticks)<Number(ip.ticks)||Number(m.start.ticks)>Number(op.ticks))){sk++;m=mk.getNextMarker(m);continue;}'
-                + 'var mn=m.name?S(m.name):"M"+idx,fp=dir.fsName+"/"+sn+"_"+mn+".jpg";'
-                + 'try{qs.setPlayerPosition(m.start.ticks);qs.exportFrameJPEG(qs.CTI.timecode,fp);ex++;}catch(e){fa++;}'
-                + 'm=mk.getNextMarker(m);}'
-                + 'A("=== 完成:导出"+ex+" 跳过"+sk+" 失败"+fa+" ===");'
-                + 'F.close();'
-                + 'alert("完成!\\n导出:"+ex+"\\n跳过:"+sk+"\\n失败:"+fa+"\\n\\n日志:桌面 pr_log.txt");'
-                + '})();';
-
-            cs.evalScript(jsx, function(result) { disableButtons(false); setStatus('完成', 'ok'); });
+            // ✅ 短调用 — host.jsx 已加载
+            cs.evalScript('$.hermes.exportFrames()', function(result) {
+                disableButtons(false);
+                if (result && String(result).indexOf('FAIL:') === 0) {
+                    setStatus(result, 'err');
+                } else {
+                    setStatus('完成', 'ok');
+                }
+                log('→ ' + (result || '(无返回值)'));
+            });
         });
-
-        log('面板就绪。');
     })();
     </script>
 </body>

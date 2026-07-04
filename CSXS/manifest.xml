@@ -25,6 +25,7 @@
             <DispatchInfo>
                 <Resources>
                     <MainPath>./index.html</MainPath>
+                    <ScriptPath>./scripts/host.jsx</ScriptPath>
                 </Resources>
                 <Lifecycle>
                     <AutoVisible>true</AutoVisible>
