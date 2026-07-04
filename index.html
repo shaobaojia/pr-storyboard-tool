@@ -3,216 +3,135 @@
 <head>
     <meta charset="UTF-8">
     <title>拉片截图工具</title>
+    <script src="./lib/CSInterface.js"></script>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: -apple-system, "Segoe UI", sans-serif;
-            background: #1e1e1e;
-            color: #ccc;
-            padding: 16px;
-            user-select: none;
-            -webkit-user-select: none;
-        }
-        .title {
-            font-size: 15px;
-            font-weight: 600;
-            color: #fff;
-            margin-bottom: 16px;
-            padding-bottom: 10px;
-            border-bottom: 1px solid #333;
-        }
-        .config-row {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 14px;
-        }
-        .config-row label {
-            font-size: 13px;
-            white-space: nowrap;
-            color: #aaa;
-        }
-        .config-row input {
-            width: 48px;
-            padding: 6px 8px;
-            background: #2d2d2d;
-            border: 1px solid #444;
-            border-radius: 4px;
-            color: #fff;
-            font-size: 13px;
-            text-align: center;
-        }
-        .config-row input:focus {
-            outline: none;
-            border-color: #6a8cff;
-        }
-        .hint {
-            font-size: 11px;
-            color: #666;
-            margin-top: -8px;
-            margin-bottom: 14px;
-        }
-        button {
-            display: block;
-            width: 100%;
-            padding: 10px 14px;
-            margin-bottom: 8px;
-            border: none;
-            border-radius: 5px;
-            font-size: 13px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: background 0.15s, opacity 0.15s;
-        }
-        button:active { opacity: 0.85; }
-        .btn-primary {
-            background: #3a5fcd;
-            color: #fff;
-        }
-        .btn-primary:hover { background: #4a6fdd; }
-        .btn-primary:disabled { background: #2a3a5a; color: #666; cursor: not-allowed; }
-        .btn-secondary {
-            background: #3a7a3a;
-            color: #fff;
-        }
-        .btn-secondary:hover { background: #4a8a4a; }
-        .btn-secondary:disabled { background: #2a4a2a; color: #666; cursor: not-allowed; }
-        .divider {
-            height: 1px;
-            background: #333;
-            margin: 14px 0;
-        }
-        .status {
-            font-size: 12px;
-            color: #888;
-            min-height: 20px;
-            margin-bottom: 4px;
-        }
-        .status.success { color: #5a5; }
-        .status.error { color: #c55; }
-        .log {
-            margin-top: 8px;
-            background: #161616;
-            border: 1px solid #2a2a2a;
-            border-radius: 4px;
-            padding: 10px;
-            font-family: "SF Mono", "Consolas", monospace;
-            font-size: 11px;
-            color: #999;
-            max-height: 160px;
-            overflow-y: auto;
-            white-space: pre-wrap;
-            word-break: break-all;
-        }
-        .log::-webkit-scrollbar { width: 6px; }
-        .log::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+        * { margin:0;padding:0;box-sizing:border-box; }
+        body { font-family:-apple-system,"Segoe UI",sans-serif; background:#1e1e1e; color:#ccc; padding:16px; }
+        .title { font-size:15px;font-weight:600;color:#fff;margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid #333; }
+        .row { display:flex;align-items:center;gap:10px;margin-bottom:14px; }
+        .row label { font-size:13px;white-space:nowrap;color:#aaa; }
+        .row input { width:48px;padding:6px 8px;background:#2d2d2d;border:1px solid #444;border-radius:4px;color:#fff;font-size:13px;text-align:center; }
+        .hint { font-size:11px;color:#666;margin-top:-8px;margin-bottom:14px; }
+        button { display:block;width:100%;padding:10px 14px;margin-bottom:8px;border:none;border-radius:5px;font-size:13px;font-weight:500;cursor:pointer; }
+        button:active { opacity:.85; }
+        .btn1 { background:#3a5fcd;color:#fff; }
+        .btn1:hover { background:#4a6fdd; }
+        .btn1:disabled { background:#2a3a5a;color:#666;cursor:not-allowed; }
+        .btn2 { background:#3a7a3a;color:#fff; }
+        .btn2:hover { background:#4a8a4a; }
+        .btn2:disabled { background:#2a4a2a;color:#666;cursor:not-allowed; }
+        .divider { height:1px;background:#333;margin:14px 0; }
+        .status { font-size:12px;color:#888;min-height:20px;margin-bottom:4px; }
+        .status.ok { color:#5a5; }
+        .status.err { color:#c55; }
+        .log { margin-top:8px;background:#161616;border:1px solid #2a2a2a;border-radius:4px;padding:10px;font-family:monospace;font-size:11px;color:#999;max-height:300px;overflow-y:auto;white-space:pre-wrap;word-break:break-all; }
     </style>
 </head>
 <body>
     <div class="title">拉片截图工具</div>
-
-    <div class="config-row">
+    <div class="row">
         <label for="mpc">每镜头标记数</label>
         <input type="number" id="mpc" value="3" min="1" max="20">
     </div>
-    <div class="hint">在 I/O 入出点范围内自动均匀打标</div>
-
-    <button class="btn-primary" id="btnPlace" onclick="runAutoPlace()">
-        1. 自动打标记
-    </button>
-
-    <button class="btn-primary" id="btnExport" onclick="runBatchExport()">
-        2. 导出截图
-    </button>
-
+    <div class="hint">I/O 入出点范围内自动均匀打标</div>
+    <button class="btn1" id="btnPlace">1. 自动打标记</button>
+    <button class="btn2" id="btnExport">2. 导出截图</button>
     <div class="divider"></div>
-
     <div class="status" id="status">就绪</div>
-    <div class="log" id="log"></div>
+    <div class="log" id="log">日志将写入桌面 pr_log.txt\n</div>
 
     <script>
+    (function() {
+        var logEl = document.getElementById('log');
+        var statusEl = document.getElementById('status');
+        function log(msg, cls) { logEl.textContent += msg + '\n'; logEl.scrollTop = logEl.scrollHeight; if (cls) { statusEl.textContent = msg; statusEl.className = 'status ' + cls; } }
+        function setStatus(msg, cls) { statusEl.textContent = msg; statusEl.className = 'status ' + (cls || ''); }
+        function disableButtons(v) { document.getElementById('btnPlace').disabled = v; document.getElementById('btnExport').disabled = v; }
         var cs = new CSInterface();
-        var extPath = cs.getSystemPath(SystemPath.EXTENSION);
-        // Normalize backslashes for ExtendScript
-        var scriptsDir = extPath.replace(/\\/g, '/') + '/scripts/';
+        log('CEP 就绪');
 
-        function $(id) { return document.getElementById(id); }
+        document.getElementById('btnPlace').addEventListener('click', function() {
+            var mpc = parseInt(document.getElementById('mpc').value, 10) || 3;
+            if (mpc < 1 || mpc > 20) return;
+            disableButtons(true); setStatus('运行中...'); logEl.textContent = '';
 
-        function log(msg, isError) {
-            var el = $('log');
-            el.textContent += msg + '\n';
-            el.scrollTop = el.scrollHeight;
-            if (isError) {
-                setStatus(msg, 'error');
-            }
-        }
+            var jsx = '$.global.mpc = ' + mpc + ';'
+                + '(function(){'
+                + 'var LOG="C:/Users/54718/Desktop/pr_log.txt";'
+                + 'var F=new File(LOG);F.open("w");'
+                + 'function A(s){F.write(s+"\\n");$.writeln(s);}'
+                + 'A("=== 自动打标记 ===");'
+                + 'var seq=app.project.activeSequence;'
+                + 'if(!seq){A("FAIL: 无序列");F.close();alert("FAIL: 无序列");return;}'
+                + 'A("序列: "+seq.name);'
+                + 'var mpc=$.global.mpc||3;A("标记/镜头: "+mpc);'
 
-        function setStatus(msg, cls) {
-            var el = $('status');
-            el.textContent = msg;
-            el.className = 'status ' + (cls || '');
-        }
+                + 'var ip=null,op=null;'
+                + 'try{ip=seq.getInPointAsTime();A("getInPointAsTime: ticks="+ip.ticks+" sec="+ip.seconds);}'
+                + 'catch(e){A("getInPointAsTime ERR: "+e);F.close();alert("ERR: getInPointAsTime");return;}'
+                + 'try{op=seq.getOutPointAsTime();A("getOutPointAsTime: ticks="+op.ticks+" sec="+op.seconds);}'
+                + 'catch(e){A("getOutPointAsTime ERR: "+e);F.close();alert("ERR: getOutPointAsTime");return;}'
+                + 'if(!ip||!op){A("FAIL: ip/op null");F.close();alert("FAIL: IO null");return;}'
+                + 'if(Number(ip.ticks)>=Number(op.ticks)){A("FAIL: IO invalid");F.close();alert("FAIL: IO范围无效");return;}'
+                + 'A("I/O OK: "+ip.seconds.toFixed(1)+"s ~ "+op.seconds.toFixed(1)+"s");'
 
-        function disableButtons(disabled) {
-            $('btnPlace').disabled = disabled;
-            $('btnExport').disabled = disabled;
-        }
+                + 'var clips=[];var vt=seq.videoTracks;A("轨数: "+vt.numTracks);'
+                + 'for(var t=0;t<vt.numTracks;t++){var tk=vt[t];var cc=0;'
+                + 'for(var c=0;c<tk.clips.numItems;c++){var cl=tk.clips[c];'
+                + 'if(Number(cl.end.ticks)<=Number(ip.ticks)||Number(cl.start.ticks)>=Number(op.ticks))continue;'
+                + 'var es=Math.max(Number(cl.start.ticks),Number(ip.ticks)),ee=Math.min(Number(cl.end.ticks),Number(op.ticks));'
+                + 'if(ee-es<500)continue;clips.push({s:es,e:ee,d:ee-es});cc++;}'
+                + 'A("轨"+t+": "+cc+" clips");}'
+                + 'A("总clip: "+clips.length);'
+                + 'if(!clips.length){A("FAIL: 无clip");F.close();alert("FAIL: 无clip");return;}'
 
-        // ── 监听 ExtendScript 输出 ──
-        cs.addEventListener('console.log', function(e) {
-            if (e.data && e.data.message) {
-                log(e.data.message);
-            }
+                + 'clips.sort(function(a,b){return a.s-b.s;});'
+                + 'var mk=seq.markers,tot=0;'
+                + 'for(var i=0;i<clips.length;i++){var cl=clips[i];'
+                + 'for(var j=1;j<=mpc;j++){var mt=(cl.s+Math.round(cl.d*j/(mpc+1)))/254016000000;'
+                + 'var m=mk.createMarker(mt);if(m){m.name="C"+(i+1)+"-"+j;tot++;}}}'
+                + 'A("=== 完成: "+tot+" markers ===");'
+                + 'F.close();'
+                + 'alert("完成!\\nclip:"+clips.length+"\\n标记:"+tot+"\\n\\n日志: 桌面 pr_log.txt");'
+                + '})();';
+
+            cs.evalScript(jsx, function(result) { disableButtons(false); setStatus('完成', 'ok'); });
         });
 
-        // ── 1. 自动打标记 ──
-        function runAutoPlace() {
-            var markersPerClip = parseInt($('mpc').value, 10) || 3;
-            if (markersPerClip < 1 || markersPerClip > 20) {
-                setStatus('每镜头标记数应为 1~20', 'error');
-                return;
-            }
+        document.getElementById('btnExport').addEventListener('click', function() {
+            disableButtons(true); setStatus('导出中...'); logEl.textContent = '';
 
-            disableButtons(true);
-            setStatus('正在自动打标记...');
-            $('log').textContent = '';
+            var jsx = '(function(){'
+                + 'var LOG="C:/Users/54718/Desktop/pr_log.txt";'
+                + 'var F=new File(LOG);F.open("w");'
+                + 'function A(s){F.write(s+"\\n");$.writeln(s);}'
+                + 'A("=== 导出截图 ===");'
+                + 'var seq=app.project.activeSequence;if(!seq){A("FAIL:no seq");F.close();alert("no seq");return;}'
+                + 'A("序列:"+seq.name);'
+                + 'var ip=null,op=null;try{ip=seq.getInPointAsTime();}catch(e){}try{op=seq.getOutPointAsTime();}catch(e){}'
+                + 'if(ip&&op)A("I/O:"+ip.seconds.toFixed(1)+"s~"+op.seconds.toFixed(1)+"s");else A("无I/O");'
+                + 'var mk=seq.markers;if(!mk||!mk.numMarkers){A("FAIL:无标记");F.close();alert("无标记");return;}'
+                + 'A("标记数:"+mk.numMarkers);'
+                + 'var dir=Folder.selectDialog("输出目录");if(!dir){A("取消");F.close();return;}'
+                + 'A("输出:"+dir.fsName);'
+                + 'app.enableQE();var qs=qe.project.getActiveSequence();if(!qs){A("FAIL:QE");F.close();alert("QE fail");return;}'
+                + 'function S(n){return n.replace(/[\\\\/:*?"<>|]/g,"_");}'
+                + 'var sn=S(seq.name),ex=0,sk=0,fa=0,idx=0,m=mk.getFirstMarker();'
+                + 'while(m){idx++;'
+                + 'if(ip&&op&&(Number(m.start.ticks)<Number(ip.ticks)||Number(m.start.ticks)>Number(op.ticks))){sk++;m=mk.getNextMarker(m);continue;}'
+                + 'var mn=m.name?S(m.name):"M"+idx,fp=dir.fsName+"/"+sn+"_"+mn+".jpg";'
+                + 'try{qs.setPlayerPosition(m.start.ticks);qs.exportFrameJPEG(qs.CTI.timecode,fp);ex++;}catch(e){fa++;}'
+                + 'm=mk.getNextMarker(m);}'
+                + 'A("=== 完成:导出"+ex+" 跳过"+sk+" 失败"+fa+" ===");'
+                + 'F.close();'
+                + 'alert("完成!\\n导出:"+ex+"\\n跳过:"+sk+"\\n失败:"+fa+"\\n\\n日志:桌面 pr_log.txt");'
+                + '})();';
 
-            // 把 markersPerClip 传入脚本
-            var script = '$.global.markersPerClip = ' + markersPerClip + '; $.evalFile("' + scriptsDir + 'auto_place_markers.jsx");';
+            cs.evalScript(jsx, function(result) { disableButtons(false); setStatus('完成', 'ok'); });
+        });
 
-            cs.evalScript(script, function(result) {
-                disableButtons(false);
-                if (result === undefined || result === null || result === '') {
-                    // Script ran - alerts/prompts are handled natively by ExtendScript
-                    setStatus('自动打标记脚本已执行', 'success');
-                } else if (result.indexOf && result.indexOf('Error') !== -1) {
-                    setStatus('执行出错', 'error');
-                    log(result, true);
-                } else {
-                    log(result);
-                    setStatus('完成', 'success');
-                }
-            });
-        }
-
-        // ── 2. 导出截图 ──
-        function runBatchExport() {
-            disableButtons(true);
-            setStatus('正在导出截图...');
-            $('log').textContent = '';
-
-            var script = '$.evalFile("' + scriptsDir + 'batch_export_markers.jsx");';
-
-            cs.evalScript(script, function(result) {
-                disableButtons(false);
-                if (result === undefined || result === null) {
-                    setStatus('导出脚本已执行', 'success');
-                } else {
-                    log(result);
-                    setStatus('完成', 'success');
-                }
-            });
-        }
+        log('面板就绪。');
+    })();
     </script>
 </body>
 </html>
