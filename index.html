@@ -38,7 +38,7 @@
     <button class="btn2" id="btnExport">2. 导出截图</button>
     <div class="divider"></div>
     <div class="status" id="status">就绪</div>
-    <div class="log" id="log">日志写入桌面 pr_log.txt / pr_export_log.txt<br>就绪。</div>
+    <div class="log" id="log">日志和截图保存在插件目录下<br>就绪。</div>
 
     <script>
     (function() {
@@ -120,7 +120,7 @@
                 }
             });
         }, 2000);
-        log('命令通道已启动 (检查 C:\\temp\\_hermes_cmd.txt)');
+        log('命令通道已启动');
     })();
     </script>
 </body>

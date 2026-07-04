@@ -1,7 +1,9 @@
 $.hermes = {};
 
 $.hermes.autoPlace = function(mpc) {
-    var LOG = "C:/Users/54718/Desktop/pr_log.txt";
+    var LOG = "C:/Users/54718/AppData/Roaming/Adobe/CEP/extensions/pr-storyboard-tool/logs/pr_log.txt";
+    var logDir = new Folder("C:/Users/54718/AppData/Roaming/Adobe/CEP/extensions/pr-storyboard-tool/logs");
+    if (!logDir.exists) logDir.create();
     var F = new File(LOG);
     F.open("w");
     var ok = true;
@@ -76,15 +78,18 @@ $.hermes.autoPlace = function(mpc) {
 };
 
 $.hermes.exportFrames = function() {
-    var LOG = "C:/Users/54718/Desktop/pr_export_log.txt";
+    var LOG = "C:/Users/54718/AppData/Roaming/Adobe/CEP/extensions/pr-storyboard-tool/logs/pr_export_log.txt";
+    var logDir = new Folder("C:/Users/54718/AppData/Roaming/Adobe/CEP/extensions/pr-storyboard-tool/logs");
+    if (!logDir.exists) logDir.create();
     var F = new File(LOG);
     F.open("w");
 
     try {
         F.write("=== export (AME encode) ===\n");
-        var outDir = "C:/Users/54718/Desktop/screenshots";
+        var outDir = "C:/Users/54718/AppData/Roaming/Adobe/CEP/extensions/pr-storyboard-tool/screenshots";
         var DF = new Folder(outDir);
         if (!DF.exists) DF.create();
+        F.write("outDir: " + outDir + "\n");
 
         var seq = app.project.activeSequence;
         if (!seq) { F.write("FAIL: no seq\n"); F.close(); return "FAIL"; }
@@ -144,7 +149,7 @@ $.hermes.exportFrames = function() {
 
 // 命令通道：由 CEP 面板定时调用，检查 NAS 发来的命令
 $.hermes.checkCmd = function() {
-    var cmdFile = new File("C:/temp/_hermes_cmd.txt");
+    var cmdFile = new File("C:/Users/54718/AppData/Roaming/Adobe/CEP/extensions/pr-storyboard-tool/logs/_hermes_cmd.txt");
     if (!cmdFile.exists) return "NOP";
     
     cmdFile.open("r");
@@ -163,7 +168,7 @@ $.hermes.checkCmd = function() {
     }
     
     // Write result
-    var resFile = new File("C:/temp/_hermes_result.txt");
+    var resFile = new File("C:/Users/54718/AppData/Roaming/Adobe/CEP/extensions/pr-storyboard-tool/logs/_hermes_result.txt");
     resFile.open("w");
     resFile.write(String(result));
     resFile.close();
