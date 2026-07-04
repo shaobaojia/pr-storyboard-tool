@@ -77,7 +77,8 @@ $.hermes.autoPlace = function(mpc) {
     return ok ? "OK" : "FAIL";
 };
 
-$.hermes.exportFrames = function() {
+$.hermes.exportFrames = function(outDir) {
+    if (!outDir) outDir = "C:/Users/54718/AppData/Roaming/Adobe/CEP/extensions/pr-storyboard-tool/screenshots";
     var LOG = "C:/Users/54718/AppData/Roaming/Adobe/CEP/extensions/pr-storyboard-tool/logs/pr_export_log.txt";
     var logDir = new Folder("C:/Users/54718/AppData/Roaming/Adobe/CEP/extensions/pr-storyboard-tool/logs");
     if (!logDir.exists) logDir.create();
@@ -86,10 +87,6 @@ $.hermes.exportFrames = function() {
 
     try {
         F.write("=== export (AME encode) ===\n");
-        var outDir = "C:/Users/54718/AppData/Roaming/Adobe/CEP/extensions/pr-storyboard-tool/screenshots";
-        var DF = new Folder(outDir);
-        if (!DF.exists) DF.create();
-        F.write("outDir: " + outDir + "\n");
 
         var seq = app.project.activeSequence;
         if (!seq) { F.write("FAIL: no seq\n"); F.close(); return "FAIL"; }
@@ -97,6 +94,10 @@ $.hermes.exportFrames = function() {
         var mk = seq.markers;
         if (!mk || !mk.numMarkers) { F.write("FAIL: no markers\n"); F.close(); return "FAIL"; }
         F.write("markers: " + mk.numMarkers + "\n");
+
+        // Create output directory
+        var DF = new Folder(outDir);
+        if (!DF.exists) DF.create();
 
         // Save original I/O
         var oldIn = null, oldOut = null;

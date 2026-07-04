@@ -34,6 +34,11 @@
         <input type="number" id="mpc" value="3" min="1" max="20">
     </div>
     <div class="hint">I/O 入出点范围内自动均匀打标</div>
+    <div class="row">
+        <label for="outDir">输出目录</label>
+        <input type="text" id="outDir" value="D:\screenshots" style="width:auto;flex:1;">
+    </div>
+    <div class="hint">截图保存位置，如 D:\screenshots</div>
     <button class="btn1" id="btnPlace">1. 自动打标记</button>
     <button class="btn2" id="btnExport">2. 导出截图</button>
     <div class="divider"></div>
@@ -98,8 +103,10 @@
             setStatus('导出中...');
             logEl.textContent = '';
 
-            // ✅ 短调用 — host.jsx 已加载
-            cs.evalScript('$.hermes.exportFrames()', function(result) {
+            var outDir = document.getElementById('outDir').value.trim();
+            if (!outDir) { setStatus('请填写输出目录', 'err'); disableButtons(false); return; }
+
+            cs.evalScript('$.hermes.exportFrames("' + outDir.replace(/\\/g, '\\\\') + '")', function(result) {
                 disableButtons(false);
                 if (result && String(result).indexOf('FAIL:') === 0) {
                     setStatus(result, 'err');
