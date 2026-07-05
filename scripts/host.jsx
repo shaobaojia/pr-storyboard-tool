@@ -236,29 +236,31 @@ $.hermes.exportFramesFFmpeg = function(outDir) {
             m = mk.getNextMarker(m);
         }
 
-        // Write JSON
-        var json = "[\n";
-        for (var i = 0; i < items.length; i++) {
-            json += "    {\"name\":\"" + items[i].name + "\",";
-            json += "\"sourceFile\":\"" + items[i].sourceFile.replace(/\\/g, "\\\\") + "\",";
-            json += "\"sourceTime\":" + items[i].sourceTime.toFixed(6) + ",";
-            json += "\"outputPath\":\"" + items[i].outputPath.replace(/\\/g, "\\\\") + "\"}";
-            if (i < items.length - 1) json += ",";
-            json += "\n";
-        }
-        json += "]";
-        var jf = new File(outDir + "/_frames.json");
-        jf.open("w"); jf.write(json); jf.close();
-
         F.write("found: " + items.length + " markers\n");
+
+        // Build JSON string for return + write backup file
+        var j = "[";
+        for (var i = 0; i < items.length; i++) {
+            j += "{\"name\":\"" + items[i].name + "\",";
+            j += "\"sourceFile\":\"" + items[i].sourceFile.replace(/\\/g, "\\\\") + "\",";
+            j += "\"sourceTime\":" + items[i].sourceTime.toFixed(6) + ",";
+            j += "\"outputPath\":\"" + items[i].outputPath.replace(/\\/g, "\\\\") + "\"}";
+            if (i < items.length - 1) j += ",";
+        }
+        j += "]";
+        // Also write file for backup / standalone use
+        var jf = new File(outDir + "/_frames.json");
+        jf.open("w"); jf.write(j); jf.close();
+
         F.write("json: " + outDir + "\\_frames.json\n");
         F.write("=== done ===\n");
+        F.close();
+        return j;
     } catch(e) {
         F.write("ERROR: " + e + "\n");
+        F.close();
+        return "FAIL: " + e;
     }
-
-    F.close();
-    return "OK";
 };
 
 // 重命名标记：按 clip 重新编号 C{clip序号}-{marker序号}
