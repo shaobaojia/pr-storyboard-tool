@@ -238,13 +238,50 @@ $.hermes.exportFramesFFmpeg = function(outDir) {
 
         F.write("found: " + items.length + " markers\n");
 
+        // Detect SRT files next to source media
+        var _srtCache = {};
+        for (var _i = 0; _i < items.length; _i++) {
+            var _src = items[_i].sourceFile;
+            if (_srtCache[_src] === undefined) {
+                _srtCache[_src] = "";
+                var _ls = Math.max(_src.lastIndexOf("\\"), _src.lastIndexOf("/"));
+                if (_ls >= 0) {
+                    var _sDir = new Folder(_src.substring(0, _ls));
+                    if (_sDir.exists) {
+                        // Try exact base-name match with common SRT extensions
+                        var _bn = _src.substring(_ls + 1);
+                        var _di = _bn.lastIndexOf(".");
+                        if (_di >= 0) _bn = _bn.substring(0, _di);
+                        var _pats = [".srt", ".chs.srt", ".chi.srt", ".Chinese(Simple).srt"];
+                        var _found = false;
+                        for (var _si = 0; _si < _pats.length; _si++) {
+                            var _tp = _sDir.fsName + "\\" + _bn + _pats[_si];
+                            if (new File(_tp).exists) { _srtCache[_src] = _tp.split(String.fromCharCode(92)).join(String.fromCharCode(47)); _found = true; break; }
+                        }
+                        // Fallback: if exact match failed, grab any .srt in dir
+                        if (!_found) {
+                            var _anySrt = _sDir.getFiles("*.srt");
+                            if (_anySrt.length > 0) {
+                                _srtCache[_src] = _anySrt[0].fsName.split(String.fromCharCode(92)).join(String.fromCharCode(47));
+                            }
+                        }
+                    }
+                }
+            }
+            items[_i].subtitleFile = _srtCache[_src];
+        }
+
         // Build JSON string for return + write backup file
         var j = "[";
         for (var i = 0; i < items.length; i++) {
             j += "{\"name\":\"" + items[i].name + "\",";
             j += "\"sourceFile\":\"" + items[i].sourceFile.replace(/\\/g, "\\\\") + "\",";
             j += "\"sourceTime\":" + items[i].sourceTime.toFixed(6) + ",";
-            j += "\"outputPath\":\"" + items[i].outputPath.replace(/\\/g, "\\\\") + "\"}";
+            j += "\"outputPath\":\"" + items[i].outputPath.replace(/\\/g, "\\\\") + "\"";
+            if (items[i].subtitleFile) {
+                j += ",\"subtitleFile\":\"" + items[i].subtitleFile.replace(/\\/g, "\\\\") + "\"";
+            }
+            j += "}";
             if (i < items.length - 1) j += ",";
         }
         j += "]";
@@ -254,7 +291,7 @@ $.hermes.exportFramesFFmpeg = function(outDir) {
 
         F.write("json: " + outDir + "\\_frames.json\n");
 
-        // Also generate standalone export_frames.ps1
+                                // Also generate standalone export_frames.ps1
         var ps = "$ff=$env:LOCALAPPDATA+'\\Microsoft\\WinGet\\Packages\\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\\ffmpeg-8.1.1-full_build\\bin\\ffmpeg.exe'\n";
         ps += "$json=Join-Path $PSScriptRoot '_frames.json'\n";
         ps += "if(!(Test-Path $json)){Write-Host '_frames.json not found';Read-Host;exit 1}\n";
@@ -262,7 +299,12 @@ $.hermes.exportFramesFFmpeg = function(outDir) {
         ps += "$n=$items.Count;Write-Host \"Total: $n\";$ok=0;$fail=0\n";
         ps += "foreach($it in $items){\n";
         ps += "  $d=Split-Path $it.outputPath -Parent;if(!(Test-Path $d)){mkdir $d -Force|Out-Null}\n";
-        ps += "  $a=@('-y','-ss',\"$($it.sourceTime)\",'-i',$it.sourceFile,'-vframes','1',$it.outputPath,'-loglevel','error')\n";
+        ps += "  if($it.subtitleFile){\n";
+        ps += "    $sub=$it.subtitleFile.Replace(':',[char]92+':')\n";
+        ps += "    $a=@('-y','-ss',\"$($it.sourceTime)\",'-i',$it.sourceFile,'-vf',\"subtitles=$sub\",'-vframes','1',$it.outputPath,'-loglevel','error')\n";
+        ps += "  }else{\n";
+        ps += "    $a=@('-y','-ss',\"$($it.sourceTime)\",'-i',$it.sourceFile,'-vframes','1',$it.outputPath,'-loglevel','error')\n";
+        ps += "  }\n";
         ps += "  & $ff $a 2>&1|Out-Null;if($LASTEXITCODE -eq 0){$ok++}else{$fail++}\n";
         ps += "  if(($ok+$fail)%10 -eq 0){Write-Host \"  $($ok+$fail)/$n (ok=$ok)\"}\n";
         ps += "}\n";
@@ -270,6 +312,9 @@ $.hermes.exportFramesFFmpeg = function(outDir) {
         ps += "Read-Host 'Press Enter to close'\n";
         var bf = new File(outDir + "/export_frames.ps1");
         bf.open("w"); bf.write(ps); bf.close();
+
+
+
 
         F.write("ps1: " + outDir + "\\export_frames.ps1\n");
         F.write("=== done ===\n");
