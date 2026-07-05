@@ -253,6 +253,25 @@ $.hermes.exportFramesFFmpeg = function(outDir) {
         jf.open("w"); jf.write(j); jf.close();
 
         F.write("json: " + outDir + "\\_frames.json\n");
+
+        // Also generate standalone export_frames.ps1
+        var ps = "$ff=$env:LOCALAPPDATA+'\\Microsoft\\WinGet\\Packages\\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\\ffmpeg-8.1.1-full_build\\bin\\ffmpeg.exe'\n";
+        ps += "$json=Join-Path $PSScriptRoot '_frames.json'\n";
+        ps += "if(!(Test-Path $json)){Write-Host '_frames.json not found';Read-Host;exit 1}\n";
+        ps += "$items=Get-Content $json -Raw -Encoding Default|ConvertFrom-Json\n";
+        ps += "$n=$items.Count;Write-Host \"Total: $n\";$ok=0;$fail=0\n";
+        ps += "foreach($it in $items){\n";
+        ps += "  $d=Split-Path $it.outputPath -Parent;if(!(Test-Path $d)){mkdir $d -Force|Out-Null}\n";
+        ps += "  $a=@('-y','-ss',\"$($it.sourceTime)\",'-i',$it.sourceFile,'-vframes','1',$it.outputPath,'-loglevel','error')\n";
+        ps += "  & $ff $a 2>&1|Out-Null;if($LASTEXITCODE -eq 0){$ok++}else{$fail++}\n";
+        ps += "  if(($ok+$fail)%10 -eq 0){Write-Host \"  $($ok+$fail)/$n (ok=$ok)\"}\n";
+        ps += "}\n";
+        ps += "Write-Host \"Done: $ok ok, $fail fail\"\n";
+        ps += "Read-Host 'Press Enter to close'\n";
+        var bf = new File(outDir + "/export_frames.ps1");
+        bf.open("w"); bf.write(ps); bf.close();
+
+        F.write("ps1: " + outDir + "\\export_frames.ps1\n");
         F.write("=== done ===\n");
         F.close();
         return j;
