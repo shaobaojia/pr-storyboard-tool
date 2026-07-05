@@ -291,19 +291,32 @@ $.hermes.exportFramesFFmpeg = function(outDir) {
 
         F.write("json: " + outDir + "\\_frames.json\n");
 
-                                // Also generate standalone export_frames.ps1
+        // Copy detected SRT to output dir for relative path access (avoids FFmpeg colon escaping)
+        for (var _si2 = 0; _si2 < items.length; _si2++) {
+            if (items[_si2].subtitleFile) {
+                var _srtSrcFile = new File(items[_si2].subtitleFile.split(String.fromCharCode(47)).join(String.fromCharCode(92)));
+                if (_srtSrcFile.exists) {
+                    _srtSrcFile.copy(outDir + "/_sub.srt");
+                    F.write("srt copied: " + outDir + "\\_sub.srt\n");
+                }
+                break;
+            }
+        }
+
+                                                // Also generate standalone export_frames.ps1
         var ps = "$ff=$env:LOCALAPPDATA+'\\Microsoft\\WinGet\\Packages\\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\\ffmpeg-8.1.1-full_build\\bin\\ffmpeg.exe'\n";
         ps += "$json=Join-Path $PSScriptRoot '_frames.json'\n";
         ps += "if(!(Test-Path $json)){Write-Host '_frames.json not found';Read-Host;exit 1}\n";
         ps += "$items=Get-Content $json -Raw -Encoding Default|ConvertFrom-Json\n";
         ps += "$n=$items.Count;Write-Host \"Total: $n\";$ok=0;$fail=0\n";
+        ps += "$subFile=Join-Path $PSScriptRoot '_sub.srt'\n";
+        ps += "$hasSub=Test-Path $subFile\n";
         ps += "foreach($it in $items){\n";
         ps += "  $d=Split-Path $it.outputPath -Parent;if(!(Test-Path $d)){mkdir $d -Force|Out-Null}\n";
-        ps += "  if($it.subtitleFile){\n";
-        ps += "    $sub=$it.subtitleFile.Replace(':',[char]92+':')\n";
-        ps += "    $a=@('-y','-ss',\"$($it.sourceTime)\",'-i',$it.sourceFile,'-vf',\"subtitles=$sub\",'-vframes','1',$it.outputPath,'-loglevel','error')\n";
+        ps += "  if($hasSub){\n";
+        ps += "    $a=@('-y','-copyts','-start_at_zero','-ss',\"$($it.sourceTime)\",'-i',$it.sourceFile,'-vf',\"subtitles=_sub.srt\",'-update','1','-vframes','1',$it.outputPath,'-loglevel','error')\n";
         ps += "  }else{\n";
-        ps += "    $a=@('-y','-ss',\"$($it.sourceTime)\",'-i',$it.sourceFile,'-vframes','1',$it.outputPath,'-loglevel','error')\n";
+        ps += "    $a=@('-y','-copyts','-start_at_zero','-ss',\"$($it.sourceTime)\",'-i',$it.sourceFile,'-update','1','-vframes','1',$it.outputPath,'-loglevel','error')\n";
         ps += "  }\n";
         ps += "  & $ff $a 2>&1|Out-Null;if($LASTEXITCODE -eq 0){$ok++}else{$fail++}\n";
         ps += "  if(($ok+$fail)%10 -eq 0){Write-Host \"  $($ok+$fail)/$n (ok=$ok)\"}\n";
@@ -312,6 +325,8 @@ $.hermes.exportFramesFFmpeg = function(outDir) {
         ps += "Read-Host 'Press Enter to close'\n";
         var bf = new File(outDir + "/export_frames.ps1");
         bf.open("w"); bf.write(ps); bf.close();
+
+
 
 
 
