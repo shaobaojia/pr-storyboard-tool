@@ -1,22 +1,22 @@
 # Changelog
 
-## v3.13 (2026-07-05)
-
-**🎉 FFmpeg 字幕渲染终于通了！**
-
-- 自动检测源文件同目录 SRT 字幕（精确匹配 + fallback）
-- `-copyts -start_at_zero` 修复 `-ss` 快进导致字幕时间轴不同步
-- SRT 拷贝到输出目录，PS1 用相对路径避开 FFmpeg 冒号转义地狱
-- PS1 用 `Test-Path` 检查字幕文件存在性
-
 ## v3.12 (2026-07-05)
 
-- PS1 自生成：面板自动产出 `export_frames.ps1`，右键即运行
-- 零外部依赖（不需要 Python、不需要 NAS）
+**🎉 FFmpeg 字幕渲染！**
+
+- 自动检测源文件同目录 SRT 字幕（精确匹配 + fallback 到目录第一个 .srt）
+- `-copyts -start_at_zero` 修复 `-ss` 快进导致字幕时间轴不同步（三大坑之首）
+- SRT 拷贝到输出目录，PS1 用相对路径 `_sub.srt` 避开 FFmpeg 冒号转义地狱
+- PS1 自生成：面板自动产出 `export_frames.ps1`，右键即运行，零外部依赖
+
+## v3.11 (2026-07-05)
+
+- PS1 自生成替代 bat+python：面板产出 `export_frames.ps1`，右键运行
+- 去掉 Python 依赖，纯 FFmpeg + PowerShell
 
 ## v3.10 (2026-07-04)
 
-- 可靠的 bat+python FFmpeg 导出方案，63/63 全通
+- 可靠的 bat+python FFmpeg 导出，63/63 全通
 - CEP 沙箱禁止进程调用，最终走文件桥接
 
 ## v3.9 (2026-07-04)
