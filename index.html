@@ -20,6 +20,8 @@
         .btn2 { background:#3a7a3a;color:#fff; }
         .btn2:hover { background:#4a8a4a; }
         .btn2:disabled { background:#2a4a2a;color:#666;cursor:not-allowed; }
+        .btn3 { background:#5a3a6a;color:#fff; }
+        .btn3:hover { background:#6a4a7a; }
         .divider { height:1px;background:#333;margin:14px 0; }
         .status { font-size:12px;color:#888;min-height:20px;margin-bottom:4px; }
         .status.ok { color:#5a5; }
@@ -35,6 +37,7 @@
     </div>
     <div class="hint">I/O 入出点范围内自动均匀打标</div>
     <button class="btn1" id="btnPlace">自动打标记</button>
+    <button class="btn3" id="btnRename">重命名标记</button>
     <div class="divider"></div>
     <div class="row">
         <label for="outDir">输出目录</label>
@@ -88,6 +91,22 @@
 
             // ✅ 短调用 — host.jsx 已在面板启动时预加载
             cs.evalScript('$.hermes.autoPlace(' + mpc + ')', function(result) {
+                disableButtons(false);
+                if (result && String(result).indexOf('FAIL:') === 0) {
+                    setStatus(result, 'err');
+                } else {
+                    setStatus('完成', 'ok');
+                }
+                log('→ ' + (result || '(无返回值)'));
+            });
+        });
+
+        // === 重命名标记 ===
+        document.getElementById('btnRename').addEventListener('click', function() {
+            disableButtons(true);
+            setStatus('重命名中...');
+            logEl.textContent = '';
+            cs.evalScript('$.hermes.renameMarkers()', function(result) {
                 disableButtons(false);
                 if (result && String(result).indexOf('FAIL:') === 0) {
                     setStatus(result, 'err');

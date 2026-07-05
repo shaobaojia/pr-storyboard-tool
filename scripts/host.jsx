@@ -148,6 +148,76 @@ $.hermes.exportFrames = function(outDir) {
     return "OK";
 };
 
+// 重命名标记：按 clip 重新编号 C{clip序号}-{marker序号}
+$.hermes.renameMarkers = function() {
+    var LOG = "C:/Users/54718/AppData/Roaming/Adobe/CEP/extensions/pr-storyboard-tool/logs/pr_log.txt";
+    var logDir = new Folder("C:/Users/54718/AppData/Roaming/Adobe/CEP/extensions/pr-storyboard-tool/logs");
+    if (!logDir.exists) logDir.create();
+    var F = new File(LOG);
+    F.open("w");
+
+    try {
+        F.write("=== rename markers ===\n");
+        var seq = app.project.activeSequence;
+        if (!seq) { F.write("FAIL: no seq\n"); F.close(); return "FAIL"; }
+
+        var ip = seq.getInPointAsTime();
+        var op = seq.getOutPointAsTime();
+        F.write("I/O: " + ip.seconds.toFixed(1) + " - " + op.seconds.toFixed(1) + "\n");
+
+        // 收集 I/O 范围内所有 clip
+        var clips = [];
+        var vt = seq.videoTracks;
+        for (var t = 0; t < vt.numTracks; t++) {
+            var tk = vt[t];
+            for (var c = 0; c < tk.clips.numItems; c++) {
+                var cl = tk.clips[c];
+                var cs = Number(cl.start.ticks);
+                var ce = Number(cl.end.ticks);
+                if (ce <= Number(ip.ticks) || cs >= Number(op.ticks)) continue;
+                clips.push({s: cs, e: ce});
+            }
+        }
+        clips.sort(function(a, b) { return a.s - b.s; });
+        F.write("clips in I/O: " + clips.length + "\n");
+
+        // 收集所有标记
+        var mk = seq.markers;
+        var markers = [];
+        var m = mk.getFirstMarker();
+        while (m) {
+            markers.push({obj: m, t: Number(m.start.ticks)});
+            m = mk.getNextMarker(m);
+        }
+        F.write("markers total: " + markers.length + "\n");
+
+        // 每个 clip 内找标记，编序号
+        var renamed = 0;
+        for (var i = 0; i < clips.length; i++) {
+            var cl = clips[i];
+            var clipMarkers = [];
+            for (var j = 0; j < markers.length; j++) {
+                if (markers[j].t >= cl.s && markers[j].t <= cl.e) {
+                    clipMarkers.push(markers[j]);
+                }
+            }
+            clipMarkers.sort(function(a, b) { return a.t - b.t; });
+            for (var k = 0; k < clipMarkers.length; k++) {
+                var newName = "C" + (i + 1) + "-" + (k + 1);
+                clipMarkers[k].obj.name = newName;
+                renamed++;
+            }
+        }
+
+        F.write("=== renamed: " + renamed + " ===\n");
+    } catch(e) {
+        F.write("ERROR: " + e + "\n");
+    }
+
+    F.close();
+    return "OK";
+};
+
 // 命令通道：由 CEP 面板定时调用，检查 NAS 发来的命令
 $.hermes.checkCmd = function() {
     var cmdFile = new File("C:/Users/54718/AppData/Roaming/Adobe/CEP/extensions/pr-storyboard-tool/logs/_hermes_cmd.txt");
