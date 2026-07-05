@@ -148,6 +148,119 @@ $.hermes.exportFrames = function(outDir) {
     return "OK";
 };
 
+// 导出 FFmpeg 帧数据：收集标记→源文件时间映射，写 JSON 供 NAS 处理
+$.hermes.exportFramesFFmpeg = function(outDir) {
+    if (!outDir) outDir = "C:/Users/54718/AppData/Roaming/Adobe/CEP/extensions/pr-storyboard-tool/screenshots";
+    var LOG = "C:/Users/54718/AppData/Roaming/Adobe/CEP/extensions/pr-storyboard-tool/logs/pr_export_log.txt";
+    var logDir = new Folder("C:/Users/54718/AppData/Roaming/Adobe/CEP/extensions/pr-storyboard-tool/logs");
+    if (!logDir.exists) logDir.create();
+    var F = new File(LOG);
+    F.open("w");
+
+    try {
+        F.write("=== export FFmpeg JSON ===\n");
+        var seq = app.project.activeSequence;
+        if (!seq) { F.write("FAIL: no seq\n"); F.close(); return "FAIL"; }
+
+        var mk = seq.markers;
+        if (!mk || !mk.numMarkers) { F.write("FAIL: no markers\n"); F.close(); return "FAIL"; }
+
+        // Create output directory
+        var DF = new Folder(outDir);
+        if (!DF.exists) DF.create();
+
+        // Build source index: group clips by media path, compute cumulative source offsets
+        var sources = {};
+        var vt = seq.videoTracks;
+        for (var t = 0; t < vt.numTracks; t++) {
+            var tk = vt[t]; if (t > 0) continue; // V1 only
+            for (var c = 0; c < tk.clips.numItems; c++) {
+                var cl = tk.clips[c];
+                var path = "";
+                try { path = cl.projectItem.getMediaPath(); } catch(e) {}
+                if (!path) path = cl.name;
+                if (!sources[path]) sources[path] = [];
+                sources[path].push({
+                    seqStart: Number(cl.start.ticks),
+                    seqEnd: Number(cl.end.ticks)
+                });
+            }
+        }
+        // Sort and compute cumulative source offsets per media file
+        var srcOffsets = {};
+        for (var p in sources) {
+            var arr = sources[p];
+            arr.sort(function(a, b) { return a.seqStart - b.seqStart; });
+            var cum = 0;
+            for (var i = 0; i < arr.length; i++) {
+                arr[i].cumulative = cum;
+                cum += (arr[i].seqEnd - arr[i].seqStart);
+            }
+            srcOffsets[p] = arr;
+        }
+
+        // Iterate markers in I/O, build JSON
+        var ip = seq.getInPointAsTime();
+        var op = seq.getOutPointAsTime();
+        var items = [];
+        var m = mk.getFirstMarker();
+        var idx = 0;
+        while (m) {
+            idx++;
+            var mt = Number(m.start.ticks);
+            if (mt >= Number(ip.ticks) && mt <= Number(op.ticks)) {
+                var mn = m.name ? m.name.replace(/[\\:*?"<>|]/g, "_") : ("M" + idx);
+                // Find which source/clip this marker belongs to
+                var found = false;
+                for (var p in srcOffsets) {
+                    var clips = srcOffsets[p];
+                    for (var i = 0; i < clips.length; i++) {
+                        if (mt >= clips[i].seqStart && mt <= clips[i].seqEnd) {
+                            var sourceTicks = clips[i].cumulative + (mt - clips[i].seqStart);
+                            var sourceSec = sourceTicks / 254016000000;
+                            var fp = outDir + "/" + mn + ".jpg";
+                            items.push({
+                                name: mn,
+                                sourceFile: p,
+                                sourceTime: sourceSec,
+                                outputPath: fp
+                            });
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (found) break;
+                }
+                if (!found) F.write("MISS: " + mn + " at " + mt + "\n");
+            }
+            m = mk.getNextMarker(m);
+        }
+
+        // Write JSON
+        var json = "[\n";
+        for (var i = 0; i < items.length; i++) {
+            json += "    {\"name\":\"" + items[i].name + "\",";
+            json += "\"sourceFile\":\"" + items[i].sourceFile.replace(/\\/g, "\\\\") + "\",";
+            json += "\"sourceTime\":" + items[i].sourceTime.toFixed(6) + ",";
+            json += "\"outputPath\":\"" + items[i].outputPath.replace(/\\/g, "\\\\") + "\"}";
+            if (i < items.length - 1) json += ",";
+            json += "\n";
+        }
+        json += "]";
+        var jf = new File(outDir + "/_frames.json");
+        jf.open("w"); jf.write(json); jf.close();
+
+        F.write("found: " + items.length + " markers\n");
+        F.write("json: " + outDir + "\\_frames.json\n");
+        F.write("=== done ===\n");
+    } catch(e) {
+        F.write("ERROR: " + e + "\n");
+    }
+
+    F.close();
+    return "OK";
+};
+
 // 重命名标记：按 clip 重新编号 C{clip序号}-{marker序号}
 $.hermes.renameMarkers = function() {
     var LOG = "C:/Users/54718/AppData/Roaming/Adobe/CEP/extensions/pr-storyboard-tool/logs/pr_log.txt";

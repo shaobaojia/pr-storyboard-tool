@@ -22,6 +22,8 @@
         .btn2:disabled { background:#2a4a2a;color:#666;cursor:not-allowed; }
         .btn3 { background:#5a3a6a;color:#fff; }
         .btn3:hover { background:#6a4a7a; }
+        .btn4 { background:#9a5a2a;color:#fff; }
+        .btn4:hover { background:#aa6a3a; }
         .divider { height:1px;background:#333;margin:14px 0; }
         .status { font-size:12px;color:#888;min-height:20px;margin-bottom:4px; }
         .status.ok { color:#5a5; }
@@ -44,7 +46,8 @@
         <input type="text" id="outDir" value="D:\screenshots" style="width:auto;flex:1;">
     </div>
     <div class="hint">截图保存位置，如 D:\screenshots</div>
-    <button class="btn2" id="btnExport">导出截图</button>
+    <button class="btn2" id="btnExport">导出截图 (AME)</button>
+    <button class="btn4" id="btnExportFF">导出截图 (FFmpeg)</button>
     <div class="divider"></div>
     <div class="status" id="status">就绪</div>
     <div class="log" id="log">日志和截图保存在插件目录下<br>就绪。</div>
@@ -65,7 +68,9 @@
         }
         function disableButtons(v) {
             document.getElementById('btnPlace').disabled = v;
+            document.getElementById('btnRename').disabled = v;
             document.getElementById('btnExport').disabled = v;
+            document.getElementById('btnExportFF').disabled = v;
         }
 
         var cs = new CSInterface();
@@ -127,6 +132,26 @@
             if (!outDir) { setStatus('请填写输出目录', 'err'); disableButtons(false); return; }
 
             cs.evalScript('$.hermes.exportFrames("' + outDir.replace(/\\/g, '\\\\') + '")', function(result) {
+                disableButtons(false);
+                if (result && String(result).indexOf('FAIL:') === 0) {
+                    setStatus(result, 'err');
+                } else {
+                    setStatus('完成', 'ok');
+                }
+                log('→ ' + (result || '(无返回值)'));
+            });
+        });
+
+        // === 导出 FFmpeg JSON ===
+        document.getElementById('btnExportFF').addEventListener('click', function() {
+            disableButtons(true);
+            setStatus('导出JSON...');
+            logEl.textContent = '';
+
+            var outDir = document.getElementById('outDir').value.trim();
+            if (!outDir) { setStatus('请填写输出目录', 'err'); disableButtons(false); return; }
+
+            cs.evalScript('$.hermes.exportFramesFFmpeg("' + outDir.replace(/\\/g, '\\\\') + '")', function(result) {
                 disableButtons(false);
                 if (result && String(result).indexOf('FAIL:') === 0) {
                     setStatus(result, 'err');
