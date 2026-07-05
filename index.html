@@ -142,60 +142,25 @@
             });
         });
 
-        // === 导出 FFmpeg（面板内置，不依赖外部） ===
+        // === 导出 FFmpeg ===
         document.getElementById('btnExportFF').addEventListener('click', function() {
             disableButtons(true);
-            setStatus('导出中...');
+            setStatus('生成数据...');
             logEl.textContent = '';
 
             var outDir = document.getElementById('outDir').value.trim();
             if (!outDir) { setStatus('请填写输出目录', 'err'); disableButtons(false); return; }
 
             cs.evalScript('$.hermes.exportFramesFFmpeg("' + outDir.replace(/\\/g, '\\\\') + '")', function(result) {
+                disableButtons(false);
                 if (result && String(result).indexOf('FAIL:') === 0) {
-                    setStatus(result, 'err'); disableButtons(false); return;
-                }
-                // result = JSON string of frame data
-                try {
-                    var items = JSON.parse(result);
-                    if (!items.length) { setStatus('无标记', 'err'); disableButtons(false); return; }
-                    logEl.textContent = '共 ' + items.length + ' 帧\n';
-                    runFFmpegBatch(items, 0);
-                } catch(e) {
-                    setStatus('解析失败: ' + e.message, 'err');
-                    disableButtons(false);
+                    setStatus(result, 'err');
+                } else {
+                    setStatus('已生成 _frames.json', 'ok');
+                    log('→ 双击输出目录下的「导出截图.bat」');
                 }
             });
         });
-
-        function runFFmpegBatch(items, idx) {
-            if (idx >= items.length) {
-                setStatus('完成', 'ok');
-                disableButtons(false);
-                log('→ 全部完成');
-                return;
-            }
-            var item = items[idx];
-            var cmd = 'ffmpeg -y -ss ' + item.sourceTime + ' -i "' + item.sourceFile + '" -vframes 1 "' + item.outputPath + '" -loglevel error';
-            try {
-                var cp = require('child_process');
-                cp.exec(cmd, {timeout: 30000}, function(err, stdout, stderr) {
-                    if (err) {
-                        log('[' + (idx+1) + '/' + items.length + '] ' + item.name + ' ✗ ' + (stderr || err.message).substring(0,80));
-                    } else {
-                        if ((idx+1) % Math.max(1, Math.floor(items.length/10)) === 0 || idx < 5 || idx >= items.length-3) {
-                            log('[' + (idx+1) + '/' + items.length + '] ' + item.name + ' ✓');
-                        }
-                    }
-                    setStatus('导出中... ' + (idx+1) + '/' + items.length);
-                    runFFmpegBatch(items, idx + 1);
-                });
-            } catch(e) {
-                log('FFmpeg 不可用: ' + e.message);
-                setStatus('请安装 FFmpeg', 'err');
-                disableButtons(false);
-            }
-        }
         // === 命令通道：NAS → CEP → PR ===
         // 面板每隔 2 秒检查命令文件，发现命令自动执行
         var cmdPolling = 0;
